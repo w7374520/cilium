@@ -1671,7 +1671,7 @@ func (kub *Kubectl) validateServicePlumbingInCiliumPod(fullName, ciliumPod strin
 	for _, port := range serviceObj.Spec.Ports {
 		var foundPort *v1.ServicePort
 		for _, realizedService := range realizedServices {
-			if port.Port == int32(realizedService.FrontendAddress.Port) {
+			if compareServicePortToFrontEnd(&port, realizedService.FrontendAddress) {
 				foundPort = &port
 				break
 			}
@@ -1696,7 +1696,8 @@ func (kub *Kubectl) validateServicePlumbingInCiliumPod(fullName, ciliumPod strin
 					lb := lbMap[fmt.Sprintf("%s:%d", frontEnd.IP, frontEnd.Port)]
 
 					for _, backAddr := range realizedService.BackendAddresses {
-						if addr.IP == *backAddr.IP && uint16(port.Port) == backAddr.Port {
+						if addr.IP == *backAddr.IP && uint16(port.Port) == backAddr.Port &&
+							lowerStrOrDef(string(port.Protocol), "tcp") == lowerStrOrDef(backAddr.Protocol, "tcp") {
 							foundBackend = true
 							for _, backend := range lb {
 								if strings.Contains(backend, fmt.Sprintf("%s:%d", *backAddr.IP, port.Port)) {
@@ -3678,7 +3679,7 @@ CILIUM_SERVICES:
 	for _, cSvc := range ciliumSvcs {
 		if cSvc.Status.Realized.FrontendAddress.IP == k8sService.Spec.ClusterIP {
 			for _, port := range k8sService.Spec.Ports {
-				if int32(cSvc.Status.Realized.FrontendAddress.Port) == port.Port {
+				if compareServicePortToFrontEnd(&port, cSvc.Status.Realized.FrontendAddress) {
 					ciliumService = &cSvc
 					break CILIUM_SERVICES
 				}
@@ -3949,7 +3950,7 @@ func validateCiliumSvc(cSvc models.Service, k8sSvcs []v1.Service, k8sEps []v1.En
 
 	var k8sServicePort *v1.ServicePort
 	for _, k8sPort := range k8sService.Spec.Ports {
-		if k8sPort.Port == int32(cSvc.Status.Realized.FrontendAddress.Port) {
+		if compareServicePortToFrontEnd(&k8sPort, cSvc.Status.Realized.FrontendAddress) {
 			k8sServicePort = &k8sPort
 			k8sServicesFound[serviceKey(*k8sService)] = true
 			break
@@ -4019,7 +4020,9 @@ func getK8sEndpointAddresses(ep v1.Endpoints) []*models.BackendAddress {
 }
 
 func addrsEqual(addr1, addr2 *models.BackendAddress) bool {
-	return *addr1.IP == *addr2.IP && addr1.Port == addr2.Port
+	return *addr1.IP == *addr2.IP &&
+		addr1.Port == addr2.Port &&
+		lowerStrOrDef(addr1.Protocol, "tcp") == lowerStrOrDef(addr2.Protocol, "tcp")
 }
 
 // GenerateNamespaceForTest generates a namespace based off of the current test
@@ -4121,4 +4124,23 @@ func (kub *Kubectl) DelIPRoute(nodeName, subnet, gw string) *CmdRes {
 	cmd := fmt.Sprintf("ip route del %s via %s", subnet, gw)
 
 	return kub.ExecInHostNetNS(context.TODO(), nodeName, cmd)
+}
+
+func lowerStrOrDef(str, def string) string {
+	if str == "" {
+		return strings.ToLower(def)
+	}
+	return strings.ToLower(str)
+}
+
+func compareServicePortToFrontEnd(sP *v1.ServicePort, fA *models.FrontendAddress) bool {
+	sProto := lowerStrOrDef(string(sP.Protocol), "tcp")
+	fProto := lowerStrOrDef(fA.Protocol, "tcp")
+	return sP.Port == int32(fA.Port) && sProto == fProto
+}
+
+func compareBackendToFrontEnd(bA *models.BackendAddress, fA *models.FrontendAddress) bool {
+	sProto := lowerStrOrDef(bA.Protocol, "tcp")
+	fProto := lowerStrOrDef(fA.Protocol, "tcp")
+	return bA.Port == fA.Port && sProto == fProto
 }
