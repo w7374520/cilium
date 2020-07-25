@@ -158,7 +158,11 @@ func (s *ClusterMeshServicesTestSuite) TestClusterMeshServicesGlobal(c *C) {
 		},
 	}
 
-	svcID := s.svcCache.UpdateService(k8sSvc, swgSvcs)
+	svcID, err := s.svcCache.UpdateService(k8sSvc, swgSvcs)
+
+	if err != nil {
+		c.Error(err)
+	}
 
 	s.expectEvent(c, k8s.UpdateService, svcID, func(event k8s.ServiceEvent) bool {
 		return event.Endpoints.Backends["10.0.185.196"] != nil &&
@@ -235,7 +239,10 @@ func (s *ClusterMeshServicesTestSuite) TestClusterMeshServicesUpdate(c *C) {
 	}
 
 	swgSvcs := lock.NewStoppableWaitGroup()
-	svcID := s.svcCache.UpdateService(k8sSvc, swgSvcs)
+	svcID, err := s.svcCache.UpdateService(k8sSvc, swgSvcs)
+	if err != nil {
+		c.Error(err)
+	}
 
 	s.expectEvent(c, k8s.UpdateService, svcID, func(event k8s.ServiceEvent) bool {
 		return event.Endpoints.Backends["10.0.185.196"] != nil &&

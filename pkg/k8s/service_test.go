@@ -104,7 +104,10 @@ func (s *K8sSuite) TestParseService(c *check.C) {
 		},
 	}
 
-	id, svc := ParseService(k8sSvc, fakeDatapath.NewNodeAddressing())
+	id, svc, err := ParseService(k8sSvc, fakeDatapath.NewNodeAddressing())
+	if err != nil {
+		c.Error(err)
+	}
 	c.Assert(id, checker.DeepEquals, ServiceID{Namespace: "bar", Name: "foo"})
 	c.Assert(svc, checker.DeepEquals, &Service{
 		TrafficPolicy:            loadbalancer.SVCTrafficPolicyCluster,
@@ -130,7 +133,10 @@ func (s *K8sSuite) TestParseService(c *check.C) {
 		},
 	}
 
-	id, svc = ParseService(k8sSvc, fakeDatapath.NewNodeAddressing())
+	id, svc, err = ParseService(k8sSvc, fakeDatapath.NewNodeAddressing())
+	if err != nil {
+		c.Error(err)
+	}
 	c.Assert(id, checker.DeepEquals, ServiceID{Namespace: "bar", Name: "foo"})
 	c.Assert(svc, checker.DeepEquals, &Service{
 		IsHeadless:               true,
@@ -156,7 +162,10 @@ func (s *K8sSuite) TestParseService(c *check.C) {
 		},
 	}
 
-	id, svc = ParseService(k8sSvc, fakeDatapath.NewNodeAddressing())
+	id, svc, err = ParseService(k8sSvc, fakeDatapath.NewNodeAddressing())
+	if err != nil {
+		c.Error(err)
+	}
 	c.Assert(id, checker.DeepEquals, ServiceID{Namespace: "bar", Name: "foo"})
 	c.Assert(svc, checker.DeepEquals, &Service{
 		FrontendIP:               net.ParseIP("127.0.0.1"),
@@ -620,12 +629,15 @@ func (s *K8sSuite) TestServiceString(c *check.C) {
 		},
 	}
 
-	_, svc := ParseService(k8sSvc, fakeDatapath.NewNodeAddressing())
+	_, svc, err := ParseService(k8sSvc, fakeDatapath.NewNodeAddressing())
+	if err != nil {
+		c.Error(err)
+	}
 	c.Assert(svc.String(), check.Equals, "frontend:127.0.0.1/ports=[]/selector=map[foo:bar]")
 }
 
 func (s *K8sSuite) TestNewClusterService(c *check.C) {
-	id, svc := ParseService(
+	id, svc, err := ParseService(
 		&slim_corev1.Service{
 			ObjectMeta: slim_metav1.ObjectMeta{
 				Name:      "foo",
@@ -642,7 +654,9 @@ func (s *K8sSuite) TestNewClusterService(c *check.C) {
 				Type: slim_corev1.ServiceTypeClusterIP,
 			},
 		}, fakeDatapath.NewNodeAddressing())
-
+	if err != nil {
+		c.Error(err)
+	}
 	_, endpoints := ParseEndpoints(&slim_corev1.Endpoints{
 		ObjectMeta: slim_metav1.ObjectMeta{
 			Name:      "foo",

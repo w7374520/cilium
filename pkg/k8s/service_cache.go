@@ -131,10 +131,13 @@ func (s *ServiceCache) GetNodeAddressing() datapath.NodeAddressing {
 // ServiceCache. Returns the ServiceID unless the Kubernetes service could not
 // be parsed and a bool to indicate whether the service was changed in the
 // cache or not.
-func (s *ServiceCache) UpdateService(k8sSvc *slim_corev1.Service, swg *lock.StoppableWaitGroup) ServiceID {
-	svcID, newService := ParseService(k8sSvc, s.nodeAddressing)
+func (s *ServiceCache) UpdateService(k8sSvc *slim_corev1.Service, swg *lock.StoppableWaitGroup) (ServiceID, error) {
+	svcID, newService, err := ParseService(k8sSvc, s.nodeAddressing)
+	if err != nil {
+		return ServiceID{}, err
+	}
 	if newService == nil {
-		return svcID
+		return svcID, nil
 	}
 
 	s.mutex.Lock()
@@ -143,7 +146,7 @@ func (s *ServiceCache) UpdateService(k8sSvc *slim_corev1.Service, swg *lock.Stop
 	oldService, ok := s.services[svcID]
 	if ok {
 		if oldService.DeepEquals(newService) {
-			return svcID
+			return svcID, nil
 		}
 	}
 
@@ -163,7 +166,7 @@ func (s *ServiceCache) UpdateService(k8sSvc *slim_corev1.Service, swg *lock.Stop
 		}
 	}
 
-	return svcID
+	return svcID, nil
 }
 
 // DeleteService parses a Kubernetes service and removes it from the

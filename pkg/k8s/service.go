@@ -32,7 +32,7 @@ import (
 	serviceStore "github.com/cilium/cilium/pkg/service/store"
 
 	"github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 func getAnnotationIncludeExternal(svc *slim_corev1.Service) bool {
@@ -60,7 +60,7 @@ func ParseServiceID(svc *slim_corev1.Service) ServiceID {
 }
 
 // ParseService parses a Kubernetes service and returns a Service
-func ParseService(svc *slim_corev1.Service, nodeAddressing datapath.NodeAddressing) (ServiceID, *Service) {
+func ParseService(svc *slim_corev1.Service, nodeAddressing datapath.NodeAddressing) (ServiceID, *Service, error) {
 	scopedLog := log.WithFields(logrus.Fields{
 		logfields.K8sSvcName:    svc.ObjectMeta.Name,
 		logfields.K8sNamespace:  svc.ObjectMeta.Namespace,
@@ -77,15 +77,15 @@ func ParseService(svc *slim_corev1.Service, nodeAddressing datapath.NodeAddressi
 
 	case slim_corev1.ServiceTypeExternalName:
 		// External-name services must be ignored
-		return ServiceID{}, nil
+		return ServiceID{}, nil, nil
 
 	default:
 		scopedLog.Warn("Ignoring k8s service: unsupported type")
-		return ServiceID{}, nil
+		return ServiceID{}, nil, nil
 	}
 
 	if svc.Spec.ClusterIP == "" && (!option.Config.EnableNodePort || len(svc.Spec.ExternalIPs) == 0) {
-		return ServiceID{}, nil
+		return ServiceID{}, nil, nil
 	}
 
 	clusterIP := net.ParseIP(svc.Spec.ClusterIP)
@@ -145,8 +145,16 @@ func ParseService(svc *slim_corev1.Service, nodeAddressing datapath.NodeAddressi
 				proto := loadbalancer.L4Type(port.Protocol)
 				port := uint16(port.NodePort)
 				id := loadbalancer.ID(0) // will be allocated by k8s_watcher
-
+				if !option.Config.EnableIPv4 &&
+					svc.Spec.IPFamily == slim_corev1.IPv4Protocol {
+					return ServiceID{}, nil, fmt.Errorf("service spec, %+v, specifies an ipfamily of ipv4, but ipv4 is not enabled", svc.Spec)
+				}
+				if !option.Config.EnableIPv6 &&
+					svc.Spec.IPFamily == slim_corev1.IPv6Protocol {
+					return ServiceID{}, nil, fmt.Errorf("service spec, %+v, specifies an ipfamily of ipv6, but ipv6 is not enabled", svc.Spec)
+				}
 				if option.Config.EnableIPv4 &&
+					couldBeProtocol(svc.Spec.IPFamily, slim_corev1.IPv4Protocol) &&
 					clusterIP != nil && !strings.Contains(svc.Spec.ClusterIP, ":") {
 
 					for _, ip := range nodeAddressing.IPv4().LoadBalancerNodeAddresses() {
@@ -156,6 +164,7 @@ func ParseService(svc *slim_corev1.Service, nodeAddressing datapath.NodeAddressi
 					}
 				}
 				if option.Config.EnableIPv6 &&
+					couldBeProtocol(svc.Spec.IPFamily, slim_corev1.IPv6Protocol) &&
 					clusterIP != nil && strings.Contains(svc.Spec.ClusterIP, ":") {
 
 					for _, ip := range nodeAddressing.IPv6().LoadBalancerNodeAddresses() {
@@ -168,7 +177,11 @@ func ParseService(svc *slim_corev1.Service, nodeAddressing datapath.NodeAddressi
 		}
 	}
 
-	return svcID, svcInfo
+	return svcID, svcInfo, nil
+}
+
+func couldBeProtocol(v1, v2 slim_corev1.IPFamily) bool {
+	return v1 == v2 || v1 == slim_corev1.IPNone
 }
 
 // ServiceID identifies the Kubernetes service

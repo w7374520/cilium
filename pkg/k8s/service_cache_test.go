@@ -213,7 +213,10 @@ func testServiceCache(c *check.C,
 	}
 
 	swgSvcs := lock.NewStoppableWaitGroup()
-	svcID := svcCache.UpdateService(k8sSvc, swgSvcs)
+	svcID, err := svcCache.UpdateService(k8sSvc, swgSvcs)
+	if err != nil {
+		c.Error(err)
+	}
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -360,7 +363,10 @@ func (s *K8sSuite) TestServiceMerging(c *check.C) {
 	}
 
 	swgSvcs := lock.NewStoppableWaitGroup()
-	svcID := svcCache.UpdateService(k8sSvc, swgSvcs)
+	svcID, err := svcCache.UpdateService(k8sSvc, swgSvcs)
+	if err != nil {
+		c.Error(err)
+	}
 
 	k8sEndpoints := &slim_corev1.Endpoints{
 		ObjectMeta: slim_metav1.ObjectMeta{
@@ -483,7 +489,7 @@ func (s *K8sSuite) TestServiceMerging(c *check.C) {
 	}
 
 	// Adding the service later must trigger an update
-	svcID2 := svcCache.UpdateService(
+	svcID2, err := svcCache.UpdateService(
 		&slim_corev1.Service{
 			ObjectMeta: slim_metav1.ObjectMeta{
 				Name:      "foo2",
@@ -505,6 +511,9 @@ func (s *K8sSuite) TestServiceMerging(c *check.C) {
 		},
 		swgSvcs,
 	)
+	if err != nil {
+		c.Error(err)
+	}
 
 	c.Assert(testutils.WaitUntil(func() bool {
 		event := <-svcCache.Events
@@ -578,7 +587,10 @@ func (s *K8sSuite) TestServiceMerging(c *check.C) {
 		return true
 	}, 2*time.Second), check.IsNil)
 
-	k8sSvcID, _ := ParseService(k8sSvc, nil)
+	k8sSvcID, _, err := ParseService(k8sSvc, nil)
+	if err != nil {
+		c.Error(err)
+	}
 	addresses := svcCache.GetServiceIP(k8sSvcID)
 	c.Assert(addresses, checker.DeepEquals, loadbalancer.NewL3n4Addr(loadbalancer.TCP, net.ParseIP("127.0.0.1"), 80, loadbalancer.ScopeExternal))
 
@@ -740,7 +752,10 @@ func (s *K8sSuite) TestServiceCacheWith2EndpointSlice(c *check.C) {
 	}
 
 	swgSvcs := lock.NewStoppableWaitGroup()
-	svcID := svcCache.UpdateService(k8sSvc, swgSvcs)
+	svcID, err := svcCache.UpdateService(k8sSvc, swgSvcs)
+	if err != nil {
+		c.Error(err)
+	}
 
 	time.Sleep(100 * time.Millisecond)
 
