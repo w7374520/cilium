@@ -252,6 +252,9 @@ const (
 	// CiliumNetworkPolicyName is the name of a CiliumNetworkPolicy
 	CiliumNetworkPolicyName = "ciliumNetworkPolicyName"
 
+	// CiliumClusterwideNetworkPolicyName is the name of a CiliumClusterwideNetworkPolicy
+	CiliumClusterwideNetworkPolicyName = "ciliumClusterwideNetworkPolicyName"
+
 	// BPFClockSource denotes the internal clock source (ktime vs jiffies)
 	BPFClockSource = "bpfClockSource"
 
