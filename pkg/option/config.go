@@ -655,10 +655,6 @@ const (
 	// names shared by all endpoints
 	EndpointInterfaceNamePrefix = "endpoint-interface-name-prefix"
 
-	// BlacklistConflictingRoutes removes all IPs from the IPAM block if a
-	// local route not owned by Cilium conflicts with it
-	BlacklistConflictingRoutes = "blacklist-conflicting-routes"
-
 	// ForceLocalPolicyEvalAtSource forces a policy decision at the source
 	// endpoint for all local communication
 	ForceLocalPolicyEvalAtSource = "force-local-policy-eval-at-source"
@@ -909,7 +905,6 @@ var HelpFlagSections = []FlagsSection{
 			SingleClusterRouteName,
 			EnableEndpointRoutes,
 			EnableLocalNodeRoute,
-			BlacklistConflictingRoutes,
 			EnableAutoDirectRoutingName,
 		},
 	},
@@ -1697,10 +1692,6 @@ type DaemonConfig struct {
 	// names shared by all endpoints
 	EndpointInterfaceNamePrefix string
 
-	// BlacklistConflictingRoutes removes all IPs from the IPAM block if a
-	// local route not owned by Cilium conflicts with it
-	BlacklistConflictingRoutes bool
-
 	// ForceLocalPolicyEvalAtSource forces a policy decision at the source
 	// endpoint for all local communication
 	ForceLocalPolicyEvalAtSource bool
@@ -1949,7 +1940,6 @@ var (
 		SelectiveRegeneration:        defaults.SelectiveRegeneration,
 		LoopbackIPv4:                 defaults.LoopbackIPv4,
 		EndpointInterfaceNamePrefix:  defaults.EndpointInterfaceNamePrefix,
-		BlacklistConflictingRoutes:   defaults.BlacklistConflictingRoutes,
 		ForceLocalPolicyEvalAtSource: defaults.ForceLocalPolicyEvalAtSource,
 		EnableEndpointRoutes:         defaults.EnableEndpointRoutes,
 		AnnotateK8sNode:              defaults.AnnotateK8sNode,
@@ -2054,12 +2044,6 @@ func (c *DaemonConfig) HealthCheckingEnabled() bool {
 // IPAMMode returns the IPAM mode
 func (c *DaemonConfig) IPAMMode() string {
 	return strings.ToLower(c.IPAM)
-}
-
-// BlacklistConflictingRoutesEnabled returns true when blacklisting of
-// conflicting routes is enabled
-func (c *DaemonConfig) BlacklistConflictingRoutesEnabled() bool {
-	return c.BlacklistConflictingRoutes
 }
 
 // TracingEnabled returns if tracing policy (outlining which rules apply to a
@@ -2427,7 +2411,6 @@ func (c *DaemonConfig) Populate() {
 	c.PrometheusServeAddr = viper.GetString(PrometheusServeAddr)
 	c.ProxyConnectTimeout = viper.GetInt(ProxyConnectTimeout)
 	c.ProxyPrometheusPort = viper.GetInt(ProxyPrometheusPort)
-	c.BlacklistConflictingRoutes = viper.GetBool(BlacklistConflictingRoutes)
 	c.ReadCNIConfiguration = viper.GetString(ReadCNIConfiguration)
 	c.RestoreState = viper.GetBool(Restore)
 	c.RunDir = viper.GetString(StateDir)
